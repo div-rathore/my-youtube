@@ -1,20 +1,32 @@
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { toggleMenu } from "../utils/appSlice";
 import { useEffect, useState } from "react";
 import { YOUTUBE_SEARCH_API } from "../utils/constants";
+import { cacheResults } from "../utils/searchSlice";
 
 const Head = () => {
   const [searchQuey, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions,setShowSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
+  const searchCache = useSelector((store) => store.search);
+/**
+searchCache = {
+    "iphone":["iphone 11", "iphone12" , and so on]
+} 
+searchQuery= iphone
+**/ 
   useEffect(() => {
     // console.log(searchQuey);
 
     //make an api ca; after every keypress
     //bit of the diff between 2 keypress is < 200ms, decline the api call
     const timer = setTimeout(() => {
-      getSearchSuggestions();
+      if (searchCache[searchQuey]) {
+        setSuggestions(searchCache[searchQuey]);
+      } else {
+        getSearchSuggestions();
+      }
     }, 200);
     return () => {
       clearTimeout(timer);
@@ -28,6 +40,11 @@ const Head = () => {
     const json = await data.json();
     // console.log(json[1]);
     setSuggestions(json[1]);
+
+    //update the cache
+    dispatch(cacheResults({
+        [searchQuey]:json[1]
+    }))
   };
   const dispatch = useDispatch();
   const toggleMenuHandler = () => {
@@ -55,22 +72,26 @@ const Head = () => {
             type="text"
             value={searchQuey}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={()=>setShowSuggestions(true)}
-            onBlur={()=> setShowSuggestions(false)}
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => setShowSuggestions(false)}
           />
           <button className="border border-gray-300 px-5 py-2 text-slate-100 rounded-r-full bg-gray-600">
             Search{" "}
           </button>
         </div>
-        { showSuggestions && searchQuey?  (<div className="fixed bg-white py-2 px-5 w-[29.5rem] rounded-md shadow-lg border border-gray-200">
-         <ul>
-            {suggestions.map((s) => (
-              <li key={s} className=" py-2 shadow-sm hover:bg-gray-100">
-                🔍 {s}
-              </li>
-            ))}
-          </ul>
-        </div>):''}
+        {showSuggestions && searchQuey ? (
+          <div className="fixed bg-white py-2 px-5 w-[29.5rem] rounded-md shadow-lg border border-gray-200">
+            <ul>
+              {suggestions.map((s) => (
+                <li key={s} className=" py-2 shadow-sm hover:bg-gray-100">
+                  🔍 {s}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          ""
+        )}
       </div>
       <div className="col-span-1">
         <img
